@@ -26,7 +26,12 @@
       }
       #log p {
         margin: 0.25rem 0;
+        white-space: pre-wrap;
       }
+      .guess { color: #1e40af; }
+      .feedback { color: #dc2626; }
+      .success { color: #16a34a; font-weight: bold; }
+      .error { color: #dc2626; font-style: italic; }
       #controls {
         display: flex;
         gap: 0.5rem;
@@ -69,24 +74,26 @@
           this.c = Array(14).fill(-1);
         }
       }
-      const trimLine = (s) => s.replace(/^\s+|\s+$/g, "");
+      const trimLine = (s) => s.replace(/^\\s+|\\s+$/g, "");
       let d = "", p = 0, r = false;
       const n = [];
+      let guessCount = 0;
+
       function x() {
-        while (p < d.length && /\s/.test(d[p])) p++;
+        while (p < d.length && /\\s/.test(d[p])) p++;
         if (p >= d.length || d[p] !== "(") { r = true; return -1; }
         p++;
-        while (p < d.length && /\s/.test(d[p])) p++;
+        while (p < d.length && /\\s/.test(d[p])) p++;
         let h = "";
         for (let i = 0; i < 4; ++i) {
-          if (p < d.length && /\d/.test(d[p])) h += d[p++];
+          if (p < d.length && /\\d/.test(d[p])) h += d[p++];
           else { r = true; return -1; }
         }
         if (h.length !== 4) { r = true; return -1; }
         const j = n.length;
         n.push(new Node(h));
         for (let i = 0; i < 14; ++i) {
-          while (p < d.length && /\s/.test(d[p])) p++;
+          while (p < d.length && /\\s/.test(d[p])) p++;
           if (p >= d.length) { r = true; return j; }
           if (d[p] === ")") { r = true; return j; }
           if (d[p] === "(") {
@@ -95,10 +102,10 @@
             let l = "";
             while (p < d.length && /[A-Za-z]/.test(d[p])) l += d[p++];
             if (l !== "nil") { r = true; return j; }
-          } else if (/\d/.test(d[p])) {
+          } else if (/\\d/.test(d[p])) {
             let m = "";
             for (let o = 0; o < 4; ++o) {
-              if (p < d.length && /\d/.test(d[p])) m += d[p++];
+              if (p < d.length && /\\d/.test(d[p])) m += d[p++];
               else { r = true; return j; }
             }
             if (m.length !== 4) { r = true; return j; }
@@ -108,31 +115,32 @@
             }
           } else { r = true; return j; }
         }
-        while (p < d.length && /\s/.test(d[p])) p++;
+        while (p < d.length && /\\s/.test(d[p])) p++;
         if (p >= d.length || d[p] !== ")") { r = true; return j; }
         p++; return j;
       }
+
       function buildTree(text) {
-        const lines = text.split(/\r?\n/);
+        const lines = text.split(/\\r?\\n/);
         let u = "", v = false;
         for (const raw of lines) {
           const w = trimLine(raw);
-          if (!v) { if (/^\d{4}$/.test(w)) { u = w; v = true; } continue; }
+          if (!v) { if (/^\\d{4}$/.test(w)) { u = w; v = true; } continue; }
           if (!w) continue;
           if (w !== "nil" && /[A-Za-z]/.test(w)) continue;
-          d += w + "\n";
+          d += w + "\\n";
         }
         if (!v) throw new Error("answer.all 缺少首行 4 位数字初始猜测");
         const b = n.length; n.push(new Node(u)); p = 0;
         for (let i = 1; i <= 13; ++i) {
-          while (p < d.length && /\s/.test(d[p])) p++;
+          while (p < d.length && /\\s/.test(d[p])) p++;
           if (p >= d.length) break;
           if (d[p] === "(") { const k = x(); if (r) break; n[b].c[i] = k; }
           else if (d.startsWith("nil", p)) { n[b].c[i] = -1; p += 3; }
           else {
             let l = "";
-            while (p < d.length && !/\s/.test(d[p])) l += d[p++];
-            if (/^\d{4}$/.test(l)) {
+            while (p < d.length && !/\\s/.test(d[p])) l += d[p++];
+            if (/^\\d{4}$/.test(l)) {
               const q = n.length; n.push(new Node(l)); n[q].c.fill(-1); n[b].c[i] = q;
             } else { r = true; break; }
           }
@@ -140,6 +148,7 @@
         if (r) throw new Error("answer.all 解析失败");
         return b;
       }
+
       function feedbackToIndex(A, B) {
         if (A === 3 && B === 0) return 4;
         if (A === 2 && B === 2) return 1;
@@ -156,34 +165,83 @@
         if (A === 0 && B === 0) return 9;
         return -1;
       }
+
       const logEl = document.getElementById("log");
       const fbEl = document.getElementById("fb");
       const ctrl = document.getElementById("controls");
       let currentIndex = -1;
+
       function append(msg, cls = "") {
-        const p = document.createElement("p"); if (cls) p.className = cls;
-        p.textContent = msg; logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+        const p = document.createElement("p");
+        if (cls) p.className = cls;
+        p.textContent = msg;
+        logEl.appendChild(p);
+        logEl.scrollTop = logEl.scrollHeight;
       }
-      function startGame(root) { currentIndex = root; append("初始猜测: " + n[root].g); ctrl.style.display = "flex"; fbEl.focus(); }
+
+      function startGame(root) {
+        guessCount = 1;
+        currentIndex = root;
+        append(`猜测 #${guessCount}: ${n[root].g}`, "guess");
+        ctrl.style.display = "flex";
+        fbEl.focus();
+      }
+
       function handle() {
-        const raw = fbEl.value.trim().toUpperCase(); fbEl.value = "";
+        const raw = fbEl.value.trim().toUpperCase();
+        fbEl.value = "";
         if (!raw) return;
-        const match = raw.match(/^(\d)A(\d)B$/);
-        if (!match) { append("反馈格式错误，请输入形如 1A2B 的内容", "error"); return; }
-        const A = parseInt(match[1]); const B = parseInt(match[2]);
-        if (A < 0 || A > 4 || B < 0 || B > 4 || A + B > 4) { append("不可能的反馈，请重新输入", "error"); return; }
-        if (A === 4) { append("回答正确！答案是 " + n[currentIndex].g, "success"); ctrl.style.display = "none"; return; }
+        const match = raw.match(/^(\\d)A(\\d)B$/);
+        if (!match) {
+          append("反馈格式错误，请输入形如 1A2B 的内容", "error");
+          return;
+        }
+        const A = parseInt(match[1]);
+        const B = parseInt(match[2]);
+        if (A < 0 || A > 4 || B < 0 || B > 4 || A + B > 4) {
+          append("不可能的反馈，请重新输入", "error");
+          return;
+        }
+
+        // 显示用户反馈
+        append(`反馈: ${A}A${B}B`, "feedback");
+
+        if (A === 4) {
+          append(`回答正确！答案是 ${n[currentIndex].g}`, "success");
+          ctrl.style.display = "none";
+          return;
+        }
         const fi = feedbackToIndex(A, B);
-        if (fi === -1) { append("不可能的反馈，请重新输入", "error"); return; }
+        if (fi === -1) {
+          append("不可能的反馈，请重新输入", "error");
+          return;
+        }
         const next = n[currentIndex].c[fi];
-        if (next == -1) { append(`错误：没有 ${A}A${B}B 的决策分支`, "error"); ctrl.style.display = "none"; return; }
-        currentIndex = next; append(n[currentIndex].g);
+        if (next === -1) {
+          append(`错误：没有 ${A}A${B}B 的决策分支`, "error");
+          ctrl.style.display = "none";
+          return;
+        }
+        currentIndex = next;
+        guessCount += 1;
+        append(`猜测 #${guessCount}: ${n[currentIndex].g}`, "guess");
       }
+
       document.getElementById("submit").addEventListener("click", handle);
-      fbEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handle(); });
-      fetch("answer.all").then(res => res.text()).then(txt => { const root = buildTree(txt); logEl.innerHTML = ""; startGame(root); }).catch(err => {
-        logEl.innerHTML = `<p style="color:red;">加载或解析 answer.all 失败：${err.message}</p>`;
+      fbEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handle();
       });
+
+      fetch("answer.all")
+        .then((res) => res.text())
+        .then((txt) => {
+          const root = buildTree(txt);
+          logEl.innerHTML = "";
+          startGame(root);
+        })
+        .catch((err) => {
+          logEl.innerHTML = `<p style="color:red;">加载或解析 answer.all 失败：${err.message}</p>`;
+        });
     </script>
   </body>
 </html>
