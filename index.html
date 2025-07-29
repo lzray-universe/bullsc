@@ -191,6 +191,7 @@
         const raw = fbEl.value.trim().toUpperCase();
         fbEl.value = "";
         if (!raw) return;
+        append(`反馈: ${raw}`);
         const match = raw.match(/^(\\d)A(\\d)B$/);
         if (!match) {
           append("反馈格式错误，请输入形如 1A2B 的内容", "error");
