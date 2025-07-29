@@ -63,22 +63,18 @@
     </div>
 
     <script>
-      /***** 数据结构 *****/
       class Node {
         constructor(g) {
-          this.g = g;               // 四位猜测
-          this.c = Array(14).fill(-1); // 14 条反馈分支
+          this.g = g;
+          this.c = Array(14).fill(-1);
         }
       }
 
-      /* 工具函数 */
       const trimLine = (s) => s.replace(/^\s+|\s+$/g, "");
 
-      /* 全局解析状态 */
       let d = "", p = 0, r = false;
       const n = [];
 
-      /* 递归解析一个括号分支（对应原 C++ 函数 x）*/
       function x() {
         while (p < d.length && /\s/.test(d[p])) p++;
         if (p >= d.length || d[p] !== "(") { r = true; return -1; }
@@ -131,11 +127,9 @@
         return j;
       }
 
-      /* 解析 answer.all 构建决策树 */
       function buildTree(text) {
         const lines = text.split(/\r?\n/);
 
-        /* 去掉 UTF‑8 BOM */
         if (lines.length && lines[0].charCodeAt(0) === 0xfeff) {
           lines[0] = lines[0].slice(1);
         }
@@ -186,7 +180,6 @@
         return root;
       }
 
-      /* 把 A/B 转成 0‑13 索引 */
       function feedbackToIndex(A, B) {
         if (A === 3 && B === 0) return 4;
         if (A === 2 && B === 2) return 1;
@@ -204,7 +197,6 @@
         return -1;
       }
 
-      /***** UI *****/
       const logEl = document.getElementById("log");
       const fbEl  = document.getElementById("fb");
       const ctrl  = document.getElementById("controls");
@@ -233,7 +225,6 @@
         fbEl.value = "";
         if (!raw) return;
 
-        /* 先记录你的反馈 */
         append(`反馈: ${raw}`);
 
         const match = raw.match(/^(\d)A(\d)B$/);
@@ -246,13 +237,13 @@
           return;
         }
 
-        if (A === 4) {                  // 猜中
+        if (A === 4) {
           append(`回答正确！答案是 ${n[currentIndex].g}`, "success");
           ctrl.style.display = "none";
           return;
         }
 
-        const fi   = feedbackToIndex(A, B);
+        const fi = feedbackToIndex(A, B);
         if (fi === -1) { append("不可能的反馈，请重新输入", "error"); return; }
 
         const next = n[currentIndex].c[fi];
@@ -272,12 +263,11 @@
         if (e.key === "Enter") handle();
       });
 
-      /* 加载 answer.all */
       fetch("answer.all")
         .then(res => res.text())
         .then(txt => {
           const root = buildTree(txt);
-          logEl.innerHTML = "";  // 清空“正在加载…”
+          logEl.innerHTML = "";
           startGame(root);
         })
         .catch(err => {
